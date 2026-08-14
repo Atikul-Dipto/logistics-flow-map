@@ -4,6 +4,7 @@ import { navItems } from '../routes/navConfig'
 import { useOps } from '../context/OpsDataContext'
 import { useToast } from '../hooks/useToast'
 import { searchCorpus } from '../lib/search'
+import { SELLERS } from '../data/sellerNames'
 import { Search, Shipments, Orders, Customers, Riders, Sellers, Hub, Warehouse } from '../icons'
 import './CommandPalette.css'
 
@@ -46,10 +47,11 @@ export default function CommandPalette({ open, onClose }) {
     for (const n of data?.nodes ?? []) {
       entries.push({ kind: n.type, label: n.label, sub: n.type === 'warehouse' ? 'Fulfillment warehouse' : `Hub · ${n.region}` })
     }
-    for (const s of mockShipments) entries.push({ kind: 'shipment', label: s.id, sub: `${s.seller} · ${s.status}` })
+    for (const s of mockShipments) entries.push({ kind: 'shipment', label: s.id, sub: `${s.seller} · ${s.status}`, openId: s.id })
     for (const o of mockOrders) entries.push({ kind: 'order', label: o.id, sub: o.seller })
     for (const c of mockCustomers) entries.push({ kind: 'customer', label: c.name, sub: c.city })
-    for (const r of riders) entries.push({ kind: 'rider', label: `${r.name} (${r.id})`, sub: r.hub })
+    for (const r of riders) entries.push({ kind: 'rider', label: `${r.name} (${r.id})`, sub: r.hub, openId: r.id })
+    for (const s of SELLERS) entries.push({ kind: 'seller', label: s.shop, sub: s.region, openId: s.code })
 
     return entries
   }, [data, mockShipments, mockOrders, mockCustomers, riders])
@@ -59,13 +61,13 @@ export default function CommandPalette({ open, onClose }) {
   const handleSelect = (entry) => {
     if (entry.kind === 'page') {
       navigate(entry.path)
-    } else if (entry.kind === 'hub') {
+    } else if (entry.kind === 'hub' || entry.kind === 'warehouse') {
       navigate('/', { state: { openHub: entry.label } })
-    } else if (entry.kind === 'warehouse') {
-      navigate('/', { state: { openHub: entry.label } })
+    } else if (entry.kind === 'shipment' || entry.kind === 'rider' || entry.kind === 'seller') {
+      navigate(KIND_ROUTE[entry.kind], { state: { openId: entry.openId } })
     } else {
       navigate(KIND_ROUTE[entry.kind] ?? '/')
-      toast(`Full ${entry.kind} detail view ships in Phase 2 — opening the ${entry.kind} module.`)
+      toast(`Full ${entry.kind} detail view ships in a later phase — opening the ${entry.kind} module.`)
     }
     onClose()
   }

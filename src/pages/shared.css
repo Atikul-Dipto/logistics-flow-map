@@ -1,0 +1,86 @@
+/* Shared primitives for every module page (Shipments, Hubs, Riders,
+   etc.) so each page's own stylesheet only holds what's actually
+   specific to it. */
+.module-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.module-page--loading {
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 12px;
+  color: var(--text-muted);
+  padding: 80px 0;
+}
+
+.module-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.module-page__header h1 {
+  font-size: 1.5rem;
+}
+
+.module-page__subtitle {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 4px;
+}
+
+.module-page__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.module-page__stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+.module-page__stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.module-page__stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.module-page__panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.module-page__panel-title {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.module-page__panel-caption {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}

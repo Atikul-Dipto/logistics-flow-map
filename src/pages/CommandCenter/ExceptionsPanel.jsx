@@ -20,7 +20,7 @@ export default function ExceptionsPanel({ exceptions }) {
             <div className="exceptions-panel__cause">{e.cause}</div>
             <div className="exceptions-panel__actions">
               {e.actions.map((a) => (
-                <button key={a} onClick={() => toast(`${a} — queued (Phase 2 workflow).`)}>
+                <button key={a} onClick={() => toast(`${a} — queued (simulated workflow).`)}>
                   {a}
                 </button>
               ))}

@@ -15,6 +15,16 @@
   line-height: 1.4;
 }
 
+.ai-commander__full-link {
+  font-size: 0.78rem;
+  color: var(--accent-strong);
+  align-self: flex-start;
+}
+
+.ai-commander__full-link:hover {
+  text-decoration: underline;
+}
+
 .ai-commander__chips {
   display: flex;
   flex-direction: column;

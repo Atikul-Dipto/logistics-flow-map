@@ -1,11 +1,12 @@
 // Client-side synthetic layer: generates everything a static
 // historical CSV can't structurally hold (live-feeling ops
-// snapshots, sparkline history, exceptions, a rider roster, a
-// searchable mock corpus). Every generator derives its numbers from
+// snapshots, sparkline history, exceptions, a rider roster, and full
+// per-module datasets for Shipments/Hubs/Riders/Routes/NDR/Returns/
+// COD/Sellers/Analytics/AI). Every generator derives its numbers from
 // the REAL aggregates in ops_data.json rather than pure randomness --
-// only entities with no real-data source (customers, rider identity)
-// are fully invented. Fixed seed throughout: determinism matters for
-// a portfolio demo people screenshot and revisit.
+// only entities with no real-data source (customer identity, exact
+// rider names) are fully invented. Fixed seed throughout: determinism
+// matters for a portfolio demo people screenshot and revisit.
 import { mulberry32 } from '../lib/rng'
 import { SELLERS } from './sellerNames'
 
@@ -13,12 +14,29 @@ const OPS_SEED = 424242
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
+function pickWeighted(rng, pairs) {
+  const total = pairs.reduce((s, p) => s + Math.max(0, p[1]), 0)
+  if (total <= 0) return pairs[0]?.[0]
+  let r = rng() * total
+  for (const [item, w] of pairs) {
+    r -= Math.max(0, w)
+    if (r <= 0) return item
+  }
+  return pairs[pairs.length - 1][0]
+}
+
 function classifySeverity(capacityPct, onTimeRate) {
   if (capacityPct >= 90 || onTimeRate < 0.68) return 'critical'
   if (capacityPct >= 80 || onTimeRate < 0.76) return 'serious'
   if (capacityPct >= 68 || onTimeRate < 0.84) return 'warning'
   return 'good'
 }
+
+const CITIES = ['Dhaka', 'Chattogram', 'Gazipur', 'Narayanganj', 'Sylhet', 'Rajshahi', 'Khulna', 'Rangpur', 'Barisal', 'Cumilla']
+const RIDER_FIRST = ['Rahim', 'Karim', 'Hasan', 'Rakib', 'Shakil', 'Nayeem', 'Tanvir', 'Imran', 'Saiful', 'Mahmud', 'Arif', 'Jahid', 'Rezaul', 'Shahin', 'Foysal', 'Ashraf']
+const RIDER_LAST = ['Islam', 'Rahman', 'Hossain', 'Ahmed', 'Khan', 'Chowdhury', 'Sarkar', 'Talukder', 'Bhuiyan', 'Uddin']
+const CUSTOMER_FIRST = ['Nasrin', 'Farhana', 'Sultana', 'Shirin', 'Nusrat', 'Tania', 'Rima', 'Momotaz', 'Rina', 'Ayesha', 'Fatema', 'Salma', 'Jesmin', 'Kamal', 'Jamal', 'Habib']
+const CUSTOMER_LAST = ['Islam', 'Rahman', 'Hossain', 'Ahmed', 'Khan', 'Akter', 'Begum', 'Molla', 'Mia', 'Uddin']
 
 // ---------- hub operational snapshot ----------
 export function generateHubOps(opsData) {
@@ -193,9 +211,6 @@ function severityRank(sev) {
 }
 
 // ---------- rider roster ----------
-const RIDER_FIRST = ['Rahim', 'Karim', 'Hasan', 'Rakib', 'Shakil', 'Nayeem', 'Tanvir', 'Imran', 'Saiful', 'Mahmud', 'Arif', 'Jahid', 'Rezaul', 'Shahin', 'Foysal', 'Ashraf']
-const RIDER_LAST = ['Islam', 'Rahman', 'Hossain', 'Ahmed', 'Khan', 'Chowdhury', 'Sarkar', 'Talukder', 'Bhuiyan', 'Uddin']
-
 export function generateRiderRoster(hubOps) {
   const rng = mulberry32(OPS_SEED + 3)
   const riders = []
@@ -219,30 +234,289 @@ export function generateRiderRoster(hubOps) {
   return riders
 }
 
-// ---------- mock search corpus (command palette) ----------
-const STATUSES = ['In Transit', 'At Hub', 'Out for Delivery', 'Delivered', 'Delayed', 'Failed Delivery', 'Returned']
-const CUSTOMER_FIRST = ['Nasrin', 'Farhana', 'Sultana', 'Shirin', 'Nusrat', 'Tania', 'Rima', 'Momotaz', 'Rina', 'Ayesha', 'Fatema', 'Salma', 'Jesmin', 'Kamal', 'Jamal', 'Habib']
-const CUSTOMER_LAST = ['Islam', 'Rahman', 'Hossain', 'Ahmed', 'Khan', 'Akter', 'Begum', 'Molla', 'Mia', 'Uddin']
+// ---------- full shipment records (Shipments module + digital twin) ----------
+const STAGE_ORDER = ['Order Placed', 'Picked Up', 'At Hub', 'In Transit', 'Out for Delivery', 'Delivered']
+const LAST_STAGE_INDEX = { 'At Hub': 2, 'In Transit': 3, 'Out for Delivery': 4, Delivered: 5, Delayed: 3, 'Failed Delivery': 4 }
 
-export function generateMockShipments(opsData, count = 1200) {
+function statusWeightsForHub(onTimeRate) {
+  const stress = clamp((0.8 - onTimeRate) * 3, 0, 1) // 0 = healthy hub, 1 = stressed hub
+  return [
+    ['Delivered', 68 - stress * 18],
+    ['In Transit', 11],
+    ['At Hub', 7],
+    ['Out for Delivery', 5],
+    ['Delayed', 5 + stress * 10],
+    ['Failed Delivery', 4 + stress * 8],
+  ]
+}
+
+function weightedDelayReason(rng, opsData) {
+  return pickWeighted(rng, opsData.network_delay_reasons.breakdown.map((b) => [b.reason, b.count]))
+}
+
+function buildTimeline(rng, status, createdAt, delayReason, attempts) {
+  const lastIndex = LAST_STAGE_INDEX[status] ?? 3
+  const events = []
+  let cursor = new Date(createdAt)
+  for (let i = 0; i <= lastIndex; i++) {
+    if (i > 0) cursor = new Date(cursor.getTime() + (2 + rng() * 7) * 3600 * 1000)
+    events.push({ stage: STAGE_ORDER[i], at: cursor.toISOString() })
+  }
+  if (status === 'Delayed' && delayReason) {
+    events.push({ stage: 'Delay flagged', at: cursor.toISOString(), note: delayReason })
+  }
+  if (status === 'Failed Delivery' && delayReason) {
+    for (let a = 0; a < attempts; a++) {
+      cursor = new Date(cursor.getTime() + (3 + rng() * 5) * 3600 * 1000)
+      events.push({ stage: `Delivery attempt ${a + 1} failed`, at: cursor.toISOString(), note: delayReason })
+    }
+  }
+  return events
+}
+
+export function generateShipments(opsData, hubOps, riders, count = 950) {
   const rng = mulberry32(OPS_SEED + 4)
-  const hubs = opsData.hub_stats.map((h) => h.hub)
+  const anchor = new Date(`${opsData.date_bounds.max_order_date}T20:00:00`)
+  const carrierPairs = opsData.carrier_stats.map((c) => [c.carrier, c.shipment_count])
+  const ridersByHub = new Map()
+  for (const r of riders) {
+    if (!ridersByHub.has(r.hub)) ridersByHub.set(r.hub, [])
+    ridersByHub.get(r.hub).push(r)
+  }
+
   const out = []
   for (let i = 0; i < count; i++) {
     const seller = SELLERS[Math.floor(rng() * SELLERS.length)]
+    const hub = hubOps[Math.floor(rng() * hubOps.length)]
+    const hubRiders = ridersByHub.get(hub.hub) || []
+    const rider = hubRiders.length ? hubRiders[Math.floor(rng() * hubRiders.length)] : null
+    const status = pickWeighted(rng, statusWeightsForHub(hub.onTimeRate))
+    const isActive = status !== 'Delivered'
+    const ageHours = isActive ? rng() * 60 : 24 + rng() * 220
+    const createdAt = new Date(anchor.getTime() - ageHours * 3600 * 1000)
+    const needsReason = status === 'Delayed' || status === 'Failed Delivery'
+    const delayReason = needsReason ? hub.topDelayReason ?? weightedDelayReason(rng, opsData) : null
+    const attempts = status === 'Failed Delivery' ? 1 + Math.floor(rng() * 2) : 0
+    const codAmount = Math.round(300 + rng() * 4200)
+    const orderValue = Math.round(codAmount * (1.05 + rng() * 0.4))
+
     out.push({
       id: `SHP${200000 + i}`,
       orderId: `ORD${200000 + i}`,
       seller: seller.shop,
-      hub: hubs[Math.floor(rng() * hubs.length)],
-      status: STATUSES[Math.floor(rng() * STATUSES.length)],
-      codAmount: Math.round(300 + rng() * 4200),
+      sellerCode: seller.code,
+      hub: hub.hub,
+      region: hub.region,
+      customer: `${CUSTOMER_FIRST[Math.floor(rng() * CUSTOMER_FIRST.length)]} ${CUSTOMER_LAST[Math.floor(rng() * CUSTOMER_LAST.length)]}`,
+      customerCity: CITIES[Math.floor(rng() * CITIES.length)],
+      riderId: rider?.id ?? null,
+      riderName: rider?.name ?? 'Unassigned',
+      carrier: pickWeighted(rng, carrierPairs),
+      status,
+      codAmount,
+      orderValue,
+      createdAt: createdAt.toISOString(),
+      delayReason,
+      attempts,
+      timeline: buildTimeline(rng, status, createdAt, delayReason, attempts),
       kind: 'shipment',
     })
   }
   return out
 }
 
+// ---------- routes / trips + AI rebalancing notes ----------
+const ROUTE_STATUSES = ['Planned', 'In Progress', 'Completed', 'Delayed']
+
+export function generateRoutes(hubOps, riders) {
+  const rng = mulberry32(OPS_SEED + 7)
+  const ridersByHub = new Map()
+  for (const r of riders) {
+    if (!ridersByHub.has(r.hub)) ridersByHub.set(r.hub, [])
+    ridersByHub.get(r.hub).push(r)
+  }
+
+  const routes = []
+  let seq = 5000
+  for (const h of hubOps) {
+    const hubRiders = ridersByHub.get(h.hub) || []
+    const routeCount = Math.max(2, Math.round(h.activeRiders / 4))
+    for (let i = 0; i < routeCount; i++) {
+      seq += 1
+      const rider = hubRiders.length ? hubRiders[Math.floor(rng() * hubRiders.length)] : null
+      const stopCount = 6 + Math.floor(rng() * 14)
+      const status = ROUTE_STATUSES[Math.floor(rng() * ROUTE_STATUSES.length)]
+      const completedStops = status === 'Completed' ? stopCount : Math.floor(stopCount * rng())
+      const loadPct = clamp(Math.round(40 + rng() * 75), 20, 132)
+      routes.push({
+        id: `RT-${seq}`,
+        hub: h.hub,
+        region: h.region,
+        riderId: rider?.id ?? null,
+        riderName: rider?.name ?? 'Unassigned',
+        stopCount,
+        completedStops,
+        loadPct,
+        status,
+        etaMinutes: Math.round(15 + rng() * 90),
+        aiNote: null,
+        kind: 'route',
+      })
+    }
+  }
+
+  // AI rebalance notes computed from the routes actually generated
+  // above -- the note and the number it references always agree.
+  const byHub = new Map()
+  for (const r of routes) {
+    if (!byHub.has(r.hub)) byHub.set(r.hub, [])
+    byHub.get(r.hub).push(r)
+  }
+  for (const hubRoutes of byHub.values()) {
+    const overloaded = hubRoutes.filter((r) => r.loadPct > 100).sort((a, b) => b.loadPct - a.loadPct)
+    const underloaded = hubRoutes.filter((r) => r.loadPct < 55).sort((a, b) => a.loadPct - b.loadPct)
+    const pairs = Math.min(overloaded.length, underloaded.length)
+    for (let i = 0; i < pairs; i++) {
+      const over = overloaded[i]
+      const under = underloaded[i]
+      const shiftStops = Math.max(1, Math.round((over.loadPct - 100) / 10))
+      over.aiNote = `Shift ~${shiftStops} stop${shiftStops === 1 ? '' : 's'} to ${under.riderName} (${under.loadPct}% load)`
+      under.aiNote = `Headroom available — candidate to absorb stops from ${over.riderName} (${over.loadPct}% load)`
+    }
+  }
+  return routes
+}
+
+// ---------- NDR (failed delivery) records ----------
+const NDR_REASONS = ['Customer unavailable', 'Wrong/incomplete address', 'Customer refused delivery', 'COD payment issue', 'Unreachable phone number']
+
+export function generateNdrRecords(shipments) {
+  const rng = mulberry32(OPS_SEED + 8)
+  return shipments
+    .filter((s) => s.status === 'Failed Delivery')
+    .map((s) => ({
+      id: s.id,
+      orderId: s.orderId,
+      seller: s.seller,
+      hub: s.hub,
+      customer: s.customer,
+      riderName: s.riderName,
+      carrier: s.carrier,
+      reason: NDR_REASONS[Math.floor(rng() * NDR_REASONS.length)],
+      attempts: s.attempts || 1,
+      aiSuccessProbability: clamp(Math.round(80 - (s.attempts || 1) * 14 + rng() * 12), 20, 92),
+      codAmount: s.codAmount,
+      kind: 'ndr',
+    }))
+    .sort((a, b) => b.attempts - a.attempts)
+}
+
+// ---------- returns (reverse logistics) ----------
+const RETURN_REASONS = ['Wrong item received', 'Changed mind', 'Damaged in transit', 'Quality not as expected', 'Wrong size/fit']
+const RETURN_STAGES = ['Requested', 'Picked Up', 'At Hub', 'Inspected', 'Refunded']
+
+export function generateReturns(shipments) {
+  const rng = mulberry32(OPS_SEED + 9)
+  const out = []
+  for (const s of shipments) {
+    if (s.status !== 'Delivered') continue
+    if (rng() > 0.055) continue // ~5.5% of delivered shipments come back
+    out.push({
+      id: `RET-${s.id.slice(3)}`,
+      shipmentId: s.id,
+      seller: s.seller,
+      hub: s.hub,
+      customer: s.customer,
+      reason: RETURN_REASONS[Math.floor(rng() * RETURN_REASONS.length)],
+      stage: RETURN_STAGES[Math.floor(rng() * RETURN_STAGES.length)],
+      agingDays: 1 + Math.floor(rng() * 13),
+      refundAmount: s.codAmount || s.orderValue,
+      kind: 'return',
+    })
+  }
+  return out
+}
+
+// ---------- COD ledger (rider cash reconciliation) ----------
+export function generateCodLedger(shipments, riders) {
+  const rng = mulberry32(OPS_SEED + 10)
+  const byRider = new Map()
+  for (const s of shipments) {
+    if (s.status !== 'Delivered' || !s.riderId) continue
+    if (!byRider.has(s.riderId)) byRider.set(s.riderId, { codAmount: 0, count: 0 })
+    const entry = byRider.get(s.riderId)
+    entry.codAmount += s.codAmount
+    entry.count += 1
+  }
+  const rows = []
+  for (const r of riders) {
+    const agg = byRider.get(r.id)
+    if (!agg || agg.count === 0) continue
+    const isAnomaly = rng() < 0.08
+    const leakageRate = isAnomaly ? 0.08 + rng() * 0.12 : rng() * 0.025
+    const expected = Math.round(agg.codAmount)
+    const collected = Math.round(expected * (1 - leakageRate))
+    const discrepancyPct = Math.round(leakageRate * 1000) / 10
+    rows.push({
+      riderId: r.id,
+      riderName: r.name,
+      hub: r.hub,
+      shipmentCount: agg.count,
+      expected,
+      collected,
+      discrepancy: expected - collected,
+      discrepancyPct,
+      settlementStatus: discrepancyPct > 8 ? 'Under Review' : discrepancyPct > 3 ? 'Pending' : 'Settled',
+      kind: 'cod',
+    })
+  }
+  return rows.sort((a, b) => b.discrepancyPct - a.discrepancyPct)
+}
+
+// ---------- seller health score ----------
+export function generateSellerHealth(shipments, returns) {
+  const bySeller = new Map()
+  for (const s of shipments) {
+    if (!bySeller.has(s.seller)) bySeller.set(s.seller, { total: 0, delivered: 0, failed: 0, delayed: 0, codValue: 0 })
+    const e = bySeller.get(s.seller)
+    e.total += 1
+    if (s.status === 'Delivered') e.delivered += 1
+    if (s.status === 'Failed Delivery') e.failed += 1
+    if (s.status === 'Delayed') e.delayed += 1
+    e.codValue += s.codAmount
+  }
+  const returnsBySeller = new Map()
+  for (const r of returns) {
+    returnsBySeller.set(r.seller, (returnsBySeller.get(r.seller) || 0) + 1)
+  }
+
+  const rows = []
+  for (const seller of SELLERS) {
+    const e = bySeller.get(seller.shop)
+    if (!e || e.total < 3) continue // not enough of today's sample to score meaningfully
+    const returnCount = returnsBySeller.get(seller.shop) || 0
+    const deliveredRate = e.delivered / e.total
+    const ndrRate = e.failed / e.total
+    const delayRate = e.delayed / e.total
+    const returnRate = returnCount / Math.max(1, e.delivered)
+    const healthScore = clamp(Math.round(100 * deliveredRate - ndrRate * 120 - delayRate * 60 - returnRate * 80 + 10), 0, 100)
+    rows.push({
+      code: seller.code,
+      shop: seller.shop,
+      region: seller.region,
+      shipmentCount: e.total,
+      deliveredRate,
+      ndrRate,
+      returnRate,
+      healthScore,
+      codValue: Math.round(e.codValue),
+      kind: 'sellerHealth',
+    })
+  }
+  return rows.sort((a, b) => b.healthScore - a.healthScore)
+}
+
+// ---------- mock search corpus (command palette; orders/customers stay Phase 2) ----------
 export function generateMockOrders(count = 300) {
   const rng = mulberry32(OPS_SEED + 5)
   const out = []
@@ -261,13 +535,12 @@ export function generateMockOrders(count = 300) {
 
 export function generateMockCustomers(count = 150) {
   const rng = mulberry32(OPS_SEED + 6)
-  const cities = ['Dhaka', 'Chattogram', 'Gazipur', 'Narayanganj', 'Sylhet', 'Rajshahi', 'Khulna', 'Rangpur', 'Barisal', 'Cumilla']
   const out = []
   for (let i = 0; i < count; i++) {
     out.push({
       id: `CUS${400000 + i}`,
       name: `${CUSTOMER_FIRST[Math.floor(rng() * CUSTOMER_FIRST.length)]} ${CUSTOMER_LAST[Math.floor(rng() * CUSTOMER_LAST.length)]}`,
-      city: cities[Math.floor(rng() * cities.length)],
+      city: CITIES[Math.floor(rng() * CITIES.length)],
       kind: 'customer',
     })
   }

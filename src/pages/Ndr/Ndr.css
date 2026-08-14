@@ -1,0 +1,20 @@
+.ndr__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ndr__actions button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ndr__actions button:hover {
+  border-color: var(--accent-border);
+  color: var(--text-strong);
+}

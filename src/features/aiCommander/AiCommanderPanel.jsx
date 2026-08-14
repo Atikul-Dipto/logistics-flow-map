@@ -1,20 +1,13 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Drawer from '../../layout/Drawer'
 import { useOps } from '../../context/OpsDataContext'
 import { useToast } from '../../hooks/useToast'
 import { matchQuestion } from './matchQuestion'
 import { buildAnswer } from './answers'
+import { CHIPS } from './chips'
 import { Sparkle } from '../../icons'
 import './AiCommanderPanel.css'
-
-const CHIPS = [
-  'Why are deliveries delayed today?',
-  'Which hub is causing today’s delay?',
-  'What’s driving SLA risk right now?',
-  'Where is COD outstanding highest?',
-  'Which carrier is underperforming?',
-  'Summarize today’s network health.',
-]
 
 export default function AiCommanderPanel({ open, onClose }) {
   const { opsData, hubOps, exceptions, loading } = useOps()
@@ -34,6 +27,9 @@ export default function AiCommanderPanel({ open, onClose }) {
     <Drawer open={open} onClose={onClose} title="AI Logistics Commander" icon={<Sparkle className="icon" />} width={440}>
       <div className="ai-commander">
         <div className="ai-commander__badge">Simulated · grounded in live network data, not a live GPS feed</div>
+        <Link to="/ai-intelligence" className="ai-commander__full-link" onClick={onClose}>
+          Open full AI Intelligence — Q&amp;A history, what-if simulation, confirmable actions →
+        </Link>
 
         {thread.length === 0 && (
           <div className="ai-commander__chips">
@@ -61,7 +57,7 @@ export default function AiCommanderPanel({ open, onClose }) {
                 {t.answer.actions.length > 0 && (
                   <div className="ai-commander__actions">
                     {t.answer.actions.map((a) => (
-                      <button key={a} onClick={() => toast(`${a} — queued (Phase 2 workflow).`)}>
+                      <button key={a} onClick={() => toast(`${a} — queued (simulated workflow).`)}>
                         {a}
                       </button>
                     ))}

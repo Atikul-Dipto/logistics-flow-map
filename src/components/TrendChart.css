@@ -1,0 +1,69 @@
+.trend-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trend-chart__legend {
+  display: flex;
+  gap: 16px;
+}
+
+.trend-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.trend-chart__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.trend-chart__canvas {
+  position: relative;
+}
+
+.trend-chart__svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+}
+
+.trend-chart__crosshair {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.trend-chart__tooltip {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  z-index: 2;
+}
+
+.trend-chart__tooltip-label {
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.trend-chart__tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trend-chart__tooltip-row strong {
+  color: var(--text-strong);
+}

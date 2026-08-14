@@ -9,7 +9,7 @@ export default function ComingSoon({ item }) {
       <div className="coming-soon__icon">
         <Icon />
       </div>
-      <span className="coming-soon__pill">Phase 2</span>
+      <span className="coming-soon__pill">Coming Soon</span>
       <h1>{item?.label}</h1>
       <p className="coming-soon__desc">{item?.description}</p>
       {item?.bullets && (
