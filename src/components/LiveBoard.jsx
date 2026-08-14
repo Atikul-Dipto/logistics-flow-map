@@ -1,4 +1,5 @@
 import { LiveTracking, Shipments, DeliveryRate } from '../icons'
+import './LiveBoard.css'
 
 const ICONS = {
   created: Shipments,

@@ -1,13 +1,18 @@
 import { Trends, Warehouse, Hub } from '../icons'
+import './HotspotList.css'
 
-export default function HotspotList({ nodes }) {
+export default function HotspotList({
+  nodes,
+  title = 'Hub throughput',
+  caption = 'Ranked by weighted degree centrality — total shipments in + out, for the active filter.',
+}) {
   const max = nodes[0]?.totalVolume || 1
   return (
     <aside className="hotspot-list">
       <h2 className="hotspot-list__title">
-        <Trends className="icon" /> Hub throughput
+        <Trends className="icon" /> {title}
       </h2>
-      <p className="hotspot-list__caption">Ranked by weighted degree centrality — total shipments in + out, for the active filter.</p>
+      <p className="hotspot-list__caption">{caption}</p>
       <ol>
         {nodes.map((n, i) => (
           <li key={n.id} className="hotspot-list__row">

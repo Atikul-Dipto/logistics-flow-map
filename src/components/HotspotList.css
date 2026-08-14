@@ -1,0 +1,84 @@
+.hotspot-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.hotspot-list__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.hotspot-list__caption {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.hotspot-list ol {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hotspot-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotspot-list__rank {
+  width: 16px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hotspot-list__row .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.hotspot-list__bar-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.hotspot-list__name {
+  font-size: 0.82rem;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hotspot-list__bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--accent-bg);
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.hotspot-list__bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+.hotspot-list__value {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}

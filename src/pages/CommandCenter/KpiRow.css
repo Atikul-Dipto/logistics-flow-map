@@ -1,0 +1,36 @@
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.kpi-row__skeleton {
+  height: 108px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  animation: kpi-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes kpi-skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 1100px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .kpi-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-row__skeleton {
+    animation: none;
+  }
+}

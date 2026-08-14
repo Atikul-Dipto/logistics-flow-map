@@ -1,0 +1,124 @@
+.live-board {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.live-board__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.live-board__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-good);
+  box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.6);
+  animation: live-pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(12, 163, 12, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0); }
+}
+
+.live-board__caption {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.live-board__list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.live-board__empty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 8px 0;
+}
+
+.live-board__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+  animation: live-row-in 0.35s ease both;
+}
+
+.live-board__row:last-child {
+  border-bottom: none;
+}
+
+@keyframes live-row-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.live-board__icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.live-board__icon--created {
+  color: var(--accent);
+}
+
+.live-board__icon--delivered {
+  color: var(--status-good);
+}
+
+.live-board__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.live-board__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.live-board__id {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-board__detail {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-board__time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-board__dot,
+  .live-board__row {
+    animation: none;
+  }
+}

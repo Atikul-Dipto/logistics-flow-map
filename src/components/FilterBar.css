@@ -1,0 +1,25 @@
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+}
+
+.filter-bar__label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.filter-bar select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--text-strong);
+  font: inherit;
+}

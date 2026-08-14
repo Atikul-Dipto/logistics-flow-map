@@ -1,4 +1,5 @@
 import { Filter } from '../icons'
+import './FilterBar.css'
 
 export default function FilterBar({ carriers, value, onChange }) {
   return (

@@ -1,0 +1,86 @@
+.exceptions-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.exceptions-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.exceptions-panel__title .icon {
+  color: var(--status-warning);
+}
+
+.exceptions-panel__caption {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.exceptions-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exceptions-panel__empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.exceptions-panel__card {
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--border);
+  background: var(--bg-alt);
+}
+
+.exceptions-panel__card--critical { border-left-color: var(--status-critical); }
+.exceptions-panel__card--serious { border-left-color: var(--status-serious); }
+.exceptions-panel__card--warning { border-left-color: var(--status-warning); }
+.exceptions-panel__card--good { border-left-color: var(--status-good); }
+
+.exceptions-panel__headline {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.4;
+}
+
+.exceptions-panel__cause {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.exceptions-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.exceptions-panel__actions button {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.exceptions-panel__actions button:hover {
+  filter: brightness(1.1);
+}

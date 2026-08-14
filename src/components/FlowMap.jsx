@@ -4,6 +4,7 @@ import { FlowSimulation } from '../lib/simulate'
 import { dbscan } from '../lib/cluster'
 import { DIVISION_MAP } from '../lib/divisions'
 import { Zones } from '../icons'
+import './FlowMap.css'
 
 const CLUSTER_INTERVAL_MS = 3000
 const CLUSTER_EPSILON_PX = 34
@@ -17,7 +18,7 @@ function readCssVar(name, fallback) {
   return value || fallback
 }
 
-export default function FlowMap({ geojson, nodes, edges, onHover, onEvent }) {
+export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOps = [], onSelectHub, emphasizeHubIds = null }) {
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
   const simRef = useRef(null)
@@ -44,6 +45,8 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent }) {
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  const hubOpsByLabel = useMemo(() => new Map(hubOps.map((h) => [h.hub, h])), [hubOps])
 
   const divisionStats = useMemo(() => {
     const nodeById = new Map(nodes.map((n) => [n.id, n]))
@@ -259,17 +262,28 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent }) {
           {clusters.map((c) => (
             <circle key={c.id} cx={c.x} cy={c.y} r={14 + c.size} className="flow-map__cluster-ring" />
           ))}
-          {projectedNodes.map((n) => (
-            <g
-              key={n.id}
-              transform={`translate(${n.x},${n.y})`}
-              className={`flow-map__node flow-map__node--${n.type}`}
-              onMouseEnter={() => emitHover({ kind: 'node', ...n })}
-              onMouseLeave={() => emitHover(null)}
-            >
-              <circle r={n.type === 'warehouse' ? 6 : 4} />
-            </g>
-          ))}
+          {projectedNodes.map((n) => {
+            const ops = hubOpsByLabel.get(n.label)
+            const severity = ops?.severity ?? 'neutral'
+            const radius = n.type === 'warehouse' ? 6 : Math.max(4, Math.min(11, 4 + (ops?.shipmentCount ?? 0) / 120))
+            const dimmed = emphasizeHubIds && !emphasizeHubIds.includes(n.label)
+            return (
+              <g
+                key={n.id}
+                transform={`translate(${n.x},${n.y})`}
+                className={
+                  `flow-map__node flow-map__node--${n.type} flow-map__node--sev-${severity}` +
+                  (severity === 'critical' ? ' flow-map__node--pulse' : '') +
+                  (dimmed ? ' flow-map__node--dim' : '')
+                }
+                onMouseEnter={() => emitHover({ kind: 'node', ...n, ops })}
+                onMouseLeave={() => emitHover(null)}
+                onClick={() => ops && onSelectHub?.(ops)}
+              >
+                <circle r={radius} />
+              </g>
+            )
+          })}
         </svg>
       </div>
 

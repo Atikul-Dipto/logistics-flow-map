@@ -1,54 +1,48 @@
+/* Command-center aesthetic is dark by identity, not by OS preference
+   -- "NASA mission control," not a theme toggle. Kept as CSS custom
+   properties (not hardcoded hex in components) so a light mode can
+   be added later without touching component code. */
 :root {
-  --bg: #ffffff;
-  --bg-alt: rgba(246, 247, 249, 0.75);
-  --surface: rgba(255, 255, 255, 0.72);
-  --border: #e4e6eb;
-  --text: #3b3f47;
-  --text-strong: #14161a;
-  --text-muted: #6b7280;
-  --accent: #2563eb;
-  --accent-strong: #1d4ed8;
-  --accent-bg: rgba(37, 99, 235, 0.08);
-  --accent-border: rgba(37, 99, 235, 0.35);
-  --shadow: 0 10px 30px -12px rgba(20, 22, 26, 0.15);
+  --bg: #0b0d11;
+  --bg-alt: rgba(18, 21, 27, 0.7);
+  --surface: rgba(22, 25, 32, 0.66);
+  --border: #262a33;
+  --text: #b7bcc6;
+  --text-strong: #f4f5f7;
+  --text-muted: #767c88;
+  --accent: #5b8def;
+  --accent-strong: #7ea6f2;
+  --accent-bg: rgba(91, 141, 239, 0.12);
+  --accent-border: rgba(91, 141, 239, 0.4);
+  --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
   --radius: 12px;
   --glass-blur: blur(16px);
 
-  --map-land: #eef0f4;
-  --map-border: rgba(20, 22, 26, 0.18);
-  --particle: #2563eb;
-  --cluster-ring: rgba(239, 68, 68, 0.85);
+  --map-land: #171a21;
+  --map-border: rgba(255, 255, 255, 0.14);
+  --particle: #7ea6f2;
+  --cluster-ring: rgba(248, 113, 113, 0.9);
+
+  /* Fixed status palette -- validated for contrast on both light and
+     dark chart surfaces (dataviz skill), never themed, always paired
+     with an icon + label rather than relied on alone. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-good-bg: rgba(12, 163, 12, 0.14);
+  --status-warning-bg: rgba(250, 178, 25, 0.14);
+  --status-serious-bg: rgba(236, 131, 90, 0.14);
+  --status-critical-bg: rgba(208, 59, 59, 0.14);
 
   --sans: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
 
   font: 16px/1.6 var(--sans);
-  color-scheme: light dark;
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --bg-alt: rgba(21, 24, 30, 0.7);
-    --surface: rgba(26, 29, 36, 0.62);
-    --border: #2a2e37;
-    --text: #c3c7cf;
-    --text-strong: #f5f6f8;
-    --text-muted: #8b909b;
-    --accent: #5b8def;
-    --accent-strong: #7ea6f2;
-    --accent-bg: rgba(91, 141, 239, 0.12);
-    --accent-border: rgba(91, 141, 239, 0.4);
-    --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
-
-    --map-land: #1b1e26;
-    --map-border: rgba(255, 255, 255, 0.14);
-    --particle: #7ea6f2;
-    --cluster-ring: rgba(248, 113, 113, 0.9);
-  }
 }
 
 * {
