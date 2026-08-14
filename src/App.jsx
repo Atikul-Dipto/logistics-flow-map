@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import FlowMap from './components/FlowMap'
 import StatCards from './components/StatCards'
 import FilterBar from './components/FilterBar'
 import HotspotList from './components/HotspotList'
+import LiveBoard from './components/LiveBoard'
 import { computeCentrality } from './lib/centrality'
 import { LiveTracking } from './icons'
 import './App.css'
+
+const MAX_EVENTS = 10
+let eventKeySeq = 0
 
 export default function App() {
   const [data, setData] = useState(null)
   const [geojson, setGeojson] = useState(null)
   const [carrier, setCarrier] = useState('All')
-  const [hoveredNode, setHoveredNode] = useState(null)
+  const [hoverInfo, setHoverInfo] = useState(null)
+  const [events, setEvents] = useState([])
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
@@ -21,6 +26,25 @@ export default function App() {
         setGeojson(geo)
       },
     )
+  }, [])
+
+  const handleEvent = useCallback((raw) => {
+    eventKeySeq += 1
+    const timeLabel = new Date(performance.timeOrigin + raw.time).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    const enriched = {
+      key: eventKeySeq,
+      type: raw.type,
+      shipmentId: raw.shipmentId,
+      sourceLabel: raw.edge?.sourceLabel,
+      targetLabel: raw.edge?.targetLabel,
+      carrier: raw.edge?.carrier,
+      timeLabel,
+    }
+    setEvents((prev) => [enriched, ...prev].slice(0, MAX_EVENTS))
   }, [])
 
   const edges = useMemo(() => {
@@ -68,15 +92,24 @@ export default function App() {
 
       <div className="app__body">
         <div className="app__map-panel">
-          <FlowMap geojson={geojson} nodes={data.nodes} edges={edges} onHover={setHoveredNode} />
-          {hoveredNode && (
+          <FlowMap geojson={geojson} nodes={data.nodes} edges={edges} onHover={setHoverInfo} onEvent={handleEvent} />
+          {hoverInfo?.kind === 'node' && (
             <div className="app__tooltip">
-              <strong>{hoveredNode.label}</strong>
-              <span>{hoveredNode.type === 'warehouse' ? 'Fulfillment warehouse' : `Regional hub — ${hoveredNode.region}`}</span>
+              <strong>{hoverInfo.label}</strong>
+              <span>{hoverInfo.type === 'warehouse' ? 'Fulfillment warehouse' : `Regional hub — ${hoverInfo.region}`}</span>
+            </div>
+          )}
+          {hoverInfo?.kind === 'division' && (
+            <div className="app__tooltip">
+              <strong>{hoverInfo.name}</strong>
+              <span>{hoverInfo.volume.toLocaleString()} shipments · {(hoverInfo.onTimeRate * 100).toFixed(1)}% on-time</span>
             </div>
           )}
         </div>
-        <HotspotList nodes={centrality.slice(0, 8)} />
+        <div className="app__side">
+          <LiveBoard events={events} />
+          <HotspotList nodes={centrality.slice(0, 8)} />
+        </div>
       </div>
 
       <footer className="app__footer">

@@ -150,9 +150,15 @@
 
 .app__body {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.app__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .app__map-panel {
@@ -169,6 +175,13 @@
   position: relative;
   width: 100%;
   height: 620px;
+}
+
+.flow-map__zoom-wrap {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .flow-map__base,
@@ -190,6 +203,61 @@
   fill: var(--map-land);
   stroke: var(--map-border);
   stroke-width: 1;
+  cursor: pointer;
+  transition: fill 0.2s ease, filter 0.2s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.flow-map__division--hovered {
+  fill: var(--accent-bg);
+  filter: drop-shadow(0 0 5px var(--accent-border));
+}
+
+.flow-map__division--zoomed {
+  fill: var(--accent-bg);
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+
+.flow-map__zoom-reset {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.flow-map__hint {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.flow-map__hint .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .flow-map__lane {
@@ -217,15 +285,6 @@
 
 .flow-map__node:hover circle {
   r: 8;
-}
-
-.flow-map__node-label {
-  fill: var(--text-strong);
-  font-size: 11px;
-  font-weight: 600;
-  paint-order: stroke;
-  stroke: var(--bg);
-  stroke-width: 3px;
 }
 
 .flow-map__cluster-ring {
@@ -346,6 +405,124 @@
 
 .hotspot-list__value {
   font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.live-board {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.live-board__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.live-board__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+  animation: live-pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+.live-board__caption {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.live-board__list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.live-board__empty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 8px 0;
+}
+
+.live-board__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+  animation: live-row-in 0.35s ease both;
+}
+
+.live-board__row:last-child {
+  border-bottom: none;
+}
+
+@keyframes live-row-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.live-board__icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.live-board__icon--created {
+  color: var(--accent);
+}
+
+.live-board__icon--delivered {
+  color: #4ade80;
+}
+
+.live-board__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.live-board__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.live-board__id {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-board__detail {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-board__time {
+  font-size: 0.72rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;

@@ -8,6 +8,7 @@ export class FlowSimulation {
   constructor(edges, seed = 20260814) {
     this.rng = mulberry32(seed)
     this.particles = []
+    this.events = []
     this.nextId = 1
     this.setEdges(edges)
   }
@@ -39,13 +40,17 @@ export class FlowSimulation {
     // longer real transit time -> slightly longer animated travel,
     // clamped to a readable visual range
     const durationMs = 2600 + Math.min(edge.avgHours ?? 24, 60) * 40 + this.rng() * 800
-    this.particles.push({
+    const shipmentId = `SHP${100000 + Math.floor(this.rng() * 899999)}`
+    const particle = {
       id: this.nextId++,
+      shipmentId,
       edge,
       born: performance.now(),
       duration: durationMs,
       lane: this.rng() * 2 - 1, // slight perpendicular offset so parallel particles don't overlap exactly
-    })
+    }
+    this.particles.push(particle)
+    this.events.push({ type: 'created', shipmentId, edge, time: particle.born })
   }
 
   // advance the simulation: spawn new particles at `rate` per second,
@@ -53,8 +58,20 @@ export class FlowSimulation {
   tick(now, rate) {
     const spawnChance = rate * (1 / 60) // called ~once per frame
     if (this.rng() < spawnChance) this.spawn()
+    const arrived = this.particles.filter((p) => now - p.born >= p.duration)
+    for (const p of arrived) {
+      this.events.push({ type: 'delivered', shipmentId: p.shipmentId, edge: p.edge, time: now })
+    }
     this.particles = this.particles.filter((p) => now - p.born < p.duration)
     return this.particles
+  }
+
+  // pull queued spawn/arrival events since the last call, for the
+  // live board -- called on a slower cadence than the render loop
+  drainEvents() {
+    const out = this.events
+    this.events = []
+    return out
   }
 
   positions(now) {

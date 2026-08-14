@@ -25,20 +25,33 @@ export function project(projection, lat, lon) {
 // individual vertex projects correctly point-by-point (verified) --
 // so build the SVG path string directly instead of going through
 // geoPath's stream/resample pipeline, which we don't need anyway at
-// this scale (a handful of small, already-simplified polygons).
-function ringToPath(ring, projection) {
+// this scale (a handful of small, already-simplified polygons). Also
+// tracks each ring's pixel bounding box while we're already walking
+// every point, so click-to-zoom doesn't need a second pass.
+function ringToPathAndBounds(ring, projection, bounds) {
   const points = ring.map(([lon, lat]) => projection([lon, lat])).filter(Boolean)
   if (!points.length) return ''
+  for (const [x, y] of points) {
+    if (x < bounds.minX) bounds.minX = x
+    if (y < bounds.minY) bounds.minY = y
+    if (x > bounds.maxX) bounds.maxX = x
+    if (y > bounds.maxY) bounds.maxY = y
+  }
   return `M${points.map((p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join('L')}Z`
 }
 
-export function geometryToPath(geometry, projection) {
-  if (!geometry) return ''
-  if (geometry.type === 'Polygon') {
-    return geometry.coordinates.map((ring) => ringToPath(ring, projection)).join(' ')
+// Returns { d, bbox } for a Polygon/MultiPolygon geometry, projected
+// to pixel space with the given projection.
+export function geometryPathAndBounds(geometry, projection) {
+  const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+  if (!geometry) return { d: '', bbox: bounds }
+
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.type === 'MultiPolygon' ? geometry.coordinates : []
+  const parts = []
+  for (const poly of polygons) {
+    for (const ring of poly) {
+      parts.push(ringToPathAndBounds(ring, projection, bounds))
+    }
   }
-  if (geometry.type === 'MultiPolygon') {
-    return geometry.coordinates.map((poly) => poly.map((ring) => ringToPath(ring, projection)).join(' ')).join(' ')
-  }
-  return ''
+  return { d: parts.join(' '), bbox: bounds }
 }
