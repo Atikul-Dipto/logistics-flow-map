@@ -516,33 +516,188 @@ export function generateSellerHealth(shipments, returns) {
   return rows.sort((a, b) => b.healthScore - a.healthScore)
 }
 
-// ---------- mock search corpus (command palette; orders/customers stay Phase 2) ----------
-export function generateMockOrders(count = 300) {
-  const rng = mulberry32(OPS_SEED + 5)
-  const out = []
-  for (let i = 0; i < count; i++) {
+// ---------- orders (order -> shipment relationship, cancellations) ----------
+const CANCEL_REASONS = ['Customer cancelled', 'Out of stock', 'Payment failed', 'Duplicate order', 'Seller cancelled']
+
+export function generateOrders(shipments) {
+  const rng = mulberry32(OPS_SEED + 11)
+  const orders = shipments.map((s) => ({
+    id: s.orderId,
+    shipmentId: s.id,
+    seller: s.seller,
+    customer: s.customer,
+    itemCount: 1 + Math.floor(rng() * 4),
+    value: s.orderValue,
+    status: s.status === 'Delivered' ? 'Fulfilled' : s.status === 'Failed Delivery' ? 'Delivery Issue' : 'Processing',
+    cancelReason: null,
+    kind: 'order',
+  }))
+
+  // orders that never became a shipment -- cancelled before fulfillment
+  const cancelledCount = Math.round(shipments.length * 0.035)
+  for (let i = 0; i < cancelledCount; i++) {
     const seller = SELLERS[Math.floor(rng() * SELLERS.length)]
-    out.push({
-      id: `ORD${300000 + i}`,
+    orders.push({
+      id: `ORD${900000 + i}`,
+      shipmentId: null,
       seller: seller.shop,
-      itemCount: 1 + Math.floor(rng() * 4),
-      value: Math.round(400 + rng() * 6000),
+      customer: `${CUSTOMER_FIRST[Math.floor(rng() * CUSTOMER_FIRST.length)]} ${CUSTOMER_LAST[Math.floor(rng() * CUSTOMER_LAST.length)]}`,
+      itemCount: 1 + Math.floor(rng() * 3),
+      value: Math.round(400 + rng() * 5000),
+      status: 'Cancelled',
+      cancelReason: CANCEL_REASONS[Math.floor(rng() * CANCEL_REASONS.length)],
       kind: 'order',
     })
   }
-  return out
+  return orders
 }
 
-export function generateMockCustomers(count = 150) {
-  const rng = mulberry32(OPS_SEED + 6)
-  const out = []
-  for (let i = 0; i < count; i++) {
-    out.push({
-      id: `CUS${400000 + i}`,
-      name: `${CUSTOMER_FIRST[Math.floor(rng() * CUSTOMER_FIRST.length)]} ${CUSTOMER_LAST[Math.floor(rng() * CUSTOMER_LAST.length)]}`,
-      city: CITIES[Math.floor(rng() * CITIES.length)],
+// ---------- pickups (first-mile, seller by seller) ----------
+const PICKUP_FAIL_REASONS = ['Seller not ready', 'Address unreachable', 'Rider unavailable', 'Item not packed', 'Seller rescheduled']
+
+export function generatePickups(hubOps, riders) {
+  const rng = mulberry32(OPS_SEED + 13)
+  const ridersByHub = new Map()
+  for (const r of riders) {
+    if (!ridersByHub.has(r.hub)) ridersByHub.set(r.hub, [])
+    ridersByHub.get(r.hub).push(r)
+  }
+
+  const rows = []
+  let seq = 6000
+  for (const seller of SELLERS) {
+    seq += 1
+    const hub = hubOps[Math.floor(rng() * hubOps.length)]
+    const hubRiders = ridersByHub.get(hub.hub) || []
+    const rider = hubRiders.length ? hubRiders[Math.floor(rng() * hubRiders.length)] : null
+    const roll = rng()
+    const status = roll < 0.78 ? 'Completed' : roll < 0.93 ? 'Pending' : 'Failed'
+    const windowStart = 9 + Math.floor(rng() * 6)
+    rows.push({
+      id: `PU-${seq}`,
+      seller: seller.shop,
+      hub: hub.hub,
+      riderName: rider?.name ?? 'Unassigned',
+      window: `${windowStart}:00–${windowStart + 2}:00`,
+      status,
+      failReason: status === 'Failed' ? PICKUP_FAIL_REASONS[Math.floor(rng() * PICKUP_FAIL_REASONS.length)] : null,
+      kind: 'pickup',
+    })
+  }
+  return rows
+}
+
+// ---------- sortation throughput by shift ----------
+const SHIFTS = ['Morning', 'Afternoon', 'Night']
+
+export function generateSortationShifts(hubOps) {
+  const rng = mulberry32(OPS_SEED + 14)
+  const rows = []
+  for (const h of hubOps) {
+    for (const shift of SHIFTS) {
+      rows.push({
+        id: `${h.hub}-${shift}`,
+        hub: h.hub,
+        shift,
+        throughput: Math.round((h.inbound / 3) * (0.7 + rng() * 0.6)),
+        pendingAging: Math.round((h.pendingSort / 3) * (0.6 + rng() * 0.8)),
+        misroutePct: Math.round((0.4 + (100 - h.health.sla) * 0.06 + rng() * 1.5) * 10) / 10,
+        kind: 'sortation',
+      })
+    }
+  }
+  return rows
+}
+
+// ---------- linehaul (hub-to-hub trunk trips) ----------
+const TRIP_STATUSES = ['Scheduled', 'In Transit', 'Arrived', 'Delayed']
+
+export function generateLinehaulTrips(hubOps, opsData) {
+  const rng = mulberry32(OPS_SEED + 15)
+  const rows = []
+  let seq = 7000
+  for (let i = 0; i < hubOps.length; i++) {
+    const tripsFromHub = 2 + Math.floor(rng() * 2)
+    for (let t = 0; t < tripsFromHub; t++) {
+      seq += 1
+      const origin = hubOps[i]
+      let dest = hubOps[Math.floor(rng() * hubOps.length)]
+      if (dest.hub === origin.hub) dest = hubOps[(i + 1) % hubOps.length]
+      const status = TRIP_STATUSES[Math.floor(rng() * TRIP_STATUSES.length)]
+      rows.push({
+        id: `LH-${seq}`,
+        originHub: origin.hub,
+        destHub: dest.hub,
+        status,
+        loadFactorPct: clamp(Math.round(50 + rng() * 60), 30, 118),
+        etaHours: Math.round(3 + rng() * 9),
+        delayReason: status === 'Delayed' ? (origin.topDelayReason ?? weightedDelayReason(rng, opsData)) : null,
+        kind: 'linehaul',
+      })
+    }
+  }
+  return rows
+}
+
+// ---------- vehicle fleet ----------
+const VEHICLE_TYPES = ['Motorbike', 'Van', 'Mini Truck']
+
+export function generateVehicles(hubOps) {
+  const rng = mulberry32(OPS_SEED + 16)
+  const rows = []
+  let seq = 8000
+  for (const h of hubOps) {
+    const count = Math.max(3, Math.round(h.activeRiders / 3))
+    for (let i = 0; i < count; i++) {
+      seq += 1
+      const type = VEHICLE_TYPES[Math.floor(rng() * VEHICLE_TYPES.length)]
+      const capacityKg = type === 'Motorbike' ? 25 : type === 'Van' ? 400 : 1200
+      const utilizationPct = clamp(Math.round(40 + rng() * 65), 15, 118)
+      const maintRoll = rng()
+      rows.push({
+        id: `VH-${seq}`,
+        hub: h.hub,
+        type,
+        ownership: rng() < 0.35 ? '3PL' : 'Owned',
+        capacityKg,
+        assignedLoadKg: Math.round(capacityKg * Math.min(1.15, utilizationPct / 100)),
+        utilizationPct,
+        maintenanceStatus: maintRoll < 0.75 ? 'OK' : maintRoll < 0.93 ? 'Due Soon' : 'Overdue',
+        kind: 'vehicle',
+      })
+    }
+  }
+  return rows
+}
+
+// ---------- customer delivery-experience profiles ----------
+export function generateCustomerProfiles(shipments) {
+  const rng = mulberry32(OPS_SEED + 12)
+  const byCustomer = new Map()
+  for (const s of shipments) {
+    const key = `${s.customer}|${s.customerCity}`
+    if (!byCustomer.has(key)) byCustomer.set(key, { name: s.customer, city: s.customerCity, total: 0, delivered: 0, failed: 0 })
+    const e = byCustomer.get(key)
+    e.total += 1
+    if (s.status === 'Delivered') e.delivered += 1
+    if (s.status === 'Failed Delivery') e.failed += 1
+  }
+
+  const rows = []
+  let seq = 0
+  for (const e of byCustomer.values()) {
+    seq += 1
+    const failRate = e.failed / e.total
+    rows.push({
+      id: `CUS${500000 + seq}`,
+      name: e.name,
+      city: e.city,
+      deliveryHistory: e.total,
+      deliveredCount: e.delivered,
+      addressQuality: clamp(Math.round(92 - failRate * 140 + (rng() - 0.5) * 10), 30, 99),
+      contactSuccessRate: clamp(Math.round(94 - failRate * 90 + (rng() - 0.5) * 8), 40, 99),
       kind: 'customer',
     })
   }
-  return out
+  return rows.sort((a, b) => b.deliveryHistory - a.deliveryHistory)
 }

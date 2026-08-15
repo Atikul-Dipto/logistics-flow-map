@@ -10,16 +10,20 @@ import {
   generateReturns,
   generateCodLedger,
   generateSellerHealth,
-  generateMockOrders,
-  generateMockCustomers,
+  generateOrders,
+  generatePickups,
+  generateSortationShifts,
+  generateLinehaulTrips,
+  generateVehicles,
+  generateCustomerProfiles,
 } from '../data/generate'
 
 // Real aggregates (ops_data.json) + the client-side generators layered
 // on top of them -- see src/data/generate.js for what's real vs
 // synthetic. Computed once via useMemo, not per-render. Downstream
-// generators (shipments -> routes/NDR/returns/COD/sellers) each
-// derive from the ones before them so nothing is computed twice or
-// drifts out of sync across modules.
+// generators (shipments -> routes/NDR/returns/COD/sellers/orders/
+// customers) each derive from the ones before them so nothing is
+// computed twice or drifts out of sync across modules.
 export function useOpsData() {
   const [opsData, setOpsData] = useState(null)
 
@@ -40,8 +44,12 @@ export function useOpsData() {
   const returns = useMemo(() => generateReturns(mockShipments), [mockShipments])
   const codLedger = useMemo(() => generateCodLedger(mockShipments, riders), [mockShipments, riders])
   const sellerHealth = useMemo(() => generateSellerHealth(mockShipments, returns), [mockShipments, returns])
-  const mockOrders = useMemo(() => generateMockOrders(), [])
-  const mockCustomers = useMemo(() => generateMockCustomers(), [])
+  const orders = useMemo(() => generateOrders(mockShipments), [mockShipments])
+  const pickups = useMemo(() => (hubOps.length ? generatePickups(hubOps, riders) : []), [hubOps, riders])
+  const sortationShifts = useMemo(() => (hubOps.length ? generateSortationShifts(hubOps) : []), [hubOps])
+  const linehaulTrips = useMemo(() => (opsData && hubOps.length ? generateLinehaulTrips(hubOps, opsData) : []), [opsData, hubOps])
+  const vehicles = useMemo(() => (hubOps.length ? generateVehicles(hubOps) : []), [hubOps])
+  const customerProfiles = useMemo(() => generateCustomerProfiles(mockShipments), [mockShipments])
 
   return {
     opsData,
@@ -55,8 +63,12 @@ export function useOpsData() {
     returns,
     codLedger,
     sellerHealth,
-    mockOrders,
-    mockCustomers,
+    orders,
+    pickups,
+    sortationShifts,
+    linehaulTrips,
+    vehicles,
+    customerProfiles,
     opsLoading: !opsData,
   }
 }
