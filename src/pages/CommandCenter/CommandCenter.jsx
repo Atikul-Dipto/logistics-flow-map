@@ -17,7 +17,7 @@ let eventKeySeq = 0
 
 export default function CommandCenter() {
   const location = useLocation()
-  const { data, geojson, hubOps, kpiSeries, exceptions, loading } = useOps()
+  const { data, geojson, hubOps, kpiSeries, exceptions, zoneStats, loading } = useOps()
   const [carrier, setCarrier] = useState('All')
   const [hoverInfo, setHoverInfo] = useState(null)
   const [events, setEvents] = useState([])
@@ -119,6 +119,7 @@ export default function CommandCenter() {
               hubOps={hubOps}
               onSelectHub={setSelectedHub}
               emphasizeHubIds={emphasizeHubIds}
+              zoneStats={zoneStats}
             />
             {hoverInfo?.kind === 'node' && (
               <div className="command-center__tooltip">

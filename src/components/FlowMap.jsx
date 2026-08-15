@@ -11,6 +11,12 @@ const CLUSTER_EPSILON_PX = 34
 const CLUSTER_MIN_PTS = 5
 const EVENT_INTERVAL_MS = 1100
 const ZOOM_MAX_SCALE = 6
+const NODE_ZOOM_MAX_SCALE = 12
+const NODE_ZOOM_WINDOW_PX = 90
+
+function regionOf(node) {
+  return node.region || node.label.split(' ')[0]
+}
 
 function readCssVar(name, fallback) {
   if (typeof window === 'undefined') return fallback
@@ -18,7 +24,7 @@ function readCssVar(name, fallback) {
   return value || fallback
 }
 
-export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOps = [], onSelectHub, emphasizeHubIds = null }) {
+export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOps = [], onSelectHub, emphasizeHubIds = null, zoneStats = {} }) {
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
   const simRef = useRef(null)
@@ -30,6 +36,7 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
   const [hoveredNode, setHoveredNode] = useState(null)
   const [hoveredDivision, setHoveredDivision] = useState(null)
   const [zoomedDivision, setZoomedDivision] = useState(null)
+  const [zoomedNode, setZoomedNode] = useState(null)
 
   useEffect(() => {
     onEventRef.current = onEvent
@@ -102,6 +109,17 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
   }, [geojson, nodes, edges, size])
 
   const zoomTransform = useMemo(() => {
+    if (zoomedNode) {
+      const node = projectedNodes.find((n) => n.id === zoomedNode)
+      if (node) {
+        const scale = Math.min(size.width / (NODE_ZOOM_WINDOW_PX * 2), size.height / (NODE_ZOOM_WINDOW_PX * 2), NODE_ZOOM_MAX_SCALE)
+        return {
+          scale,
+          tx: size.width / 2 - scale * node.x,
+          ty: size.height / 2 - scale * node.y,
+        }
+      }
+    }
     if (!zoomedDivision) return null
     const target = divisionPaths.find((d) => d.id === zoomedDivision)
     if (!target || !isFinite(target.bbox.minX)) return null
@@ -115,7 +133,34 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
       tx: size.width / 2 - scale * cx,
       ty: size.height / 2 - scale * cy,
     }
-  }, [zoomedDivision, divisionPaths, size])
+  }, [zoomedNode, zoomedDivision, divisionPaths, projectedNodes, size])
+
+  const zoneDetail = useMemo(() => {
+    if (!zoomedNode) return null
+    const node = projectedNodes.find((n) => n.id === zoomedNode)
+    if (!node) return null
+    let inbound = 0
+    let outbound = 0
+    for (const e of projectedEdges) {
+      if (e.target === zoomedNode) inbound += e.volume
+      if (e.source === zoomedNode) outbound += e.volume
+    }
+    const stats = zoneStats[node.label]
+    return {
+      label: node.label,
+      type: node.type,
+      inbound,
+      outbound,
+      // packageCount comes from the live simulated shipment layer, a
+      // much smaller sample than the historical edge volumes above --
+      // shown as this zone's own local/last-mile activity, not
+      // netted against inbound/outbound (the two datasets aren't on
+      // the same scale, so a subtraction would just clamp to 0).
+      within: stats?.packageCount ?? null,
+      sellerCount: stats?.sellerCount ?? null,
+      customerCount: stats?.customerCount ?? null,
+    }
+  }, [zoomedNode, projectedNodes, projectedEdges, zoneStats])
 
   // theme colors, re-read whenever the OS color scheme flips
   useEffect(() => {
@@ -201,7 +246,18 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
   }
 
   const handleDivisionClick = (name) => {
+    if (zoomedNode) {
+      setZoomedNode(null)
+      setZoomedDivision(name)
+      return
+    }
     setZoomedDivision((cur) => (cur === name ? null : name))
+  }
+
+  const handleNodeClick = (n, ops) => {
+    if (ops) onSelectHub?.(ops)
+    setZoomedNode((cur) => (cur === n.id ? null : n.id))
+    setZoomedDivision(DIVISION_MAP[regionOf(n)] ?? null)
   }
 
   const zoomStyle = zoomTransform
@@ -210,10 +266,68 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
 
   return (
     <div ref={containerRef} className="flow-map">
-      {zoomedDivision && (
-        <button className="flow-map__zoom-reset" onClick={() => setZoomedDivision(null)}>
-          ← Full map
-        </button>
+      {(zoomedDivision || zoomedNode) && (
+        <div className="flow-map__crumbs">
+          <button
+            className="flow-map__crumb"
+            onClick={() => {
+              setZoomedNode(null)
+              setZoomedDivision(null)
+            }}
+          >
+            Full map
+          </button>
+          {zoomedDivision && (
+            <>
+              <span className="flow-map__crumb-sep">/</span>
+              {zoomedNode ? (
+                <button className="flow-map__crumb" onClick={() => setZoomedNode(null)}>
+                  {zoomedDivision}
+                </button>
+              ) : (
+                <span className="flow-map__crumb flow-map__crumb--active">{zoomedDivision}</span>
+              )}
+            </>
+          )}
+          {zoomedNode && zoneDetail && (
+            <>
+              <span className="flow-map__crumb-sep">/</span>
+              <span className="flow-map__crumb flow-map__crumb--active">{zoneDetail.label}</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {zoneDetail && (
+        <div className="flow-map__zone-panel">
+          <div className="flow-map__zone-panel-title">{zoneDetail.label}</div>
+          <div className="flow-map__zone-panel-sub">
+            {zoneDetail.type === 'warehouse' ? 'Fulfillment warehouse' : 'Regional hub'}
+          </div>
+          <div className="flow-map__zone-panel-grid">
+            <div className="flow-map__zone-stat">
+              <span>{zoneDetail.inbound.toLocaleString()}</span>Into this zone
+            </div>
+            <div className="flow-map__zone-stat">
+              <span>{zoneDetail.outbound.toLocaleString()}</span>Out of this zone
+            </div>
+            {zoneDetail.within != null && (
+              <div className="flow-map__zone-stat">
+                <span>{zoneDetail.within.toLocaleString()}</span>Within this zone
+              </div>
+            )}
+            {zoneDetail.sellerCount != null && (
+              <div className="flow-map__zone-stat">
+                <span>{zoneDetail.sellerCount.toLocaleString()}</span>Active sellers
+              </div>
+            )}
+            {zoneDetail.customerCount != null && (
+              <div className="flow-map__zone-stat">
+                <span>{zoneDetail.customerCount.toLocaleString()}</span>Customers served
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="flow-map__zoom-wrap" style={zoomStyle}>
@@ -274,11 +388,15 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
                 className={
                   `flow-map__node flow-map__node--${n.type} flow-map__node--sev-${severity}` +
                   (severity === 'critical' ? ' flow-map__node--pulse' : '') +
-                  (dimmed ? ' flow-map__node--dim' : '')
+                  (dimmed ? ' flow-map__node--dim' : '') +
+                  (zoomedNode === n.id ? ' flow-map__node--zoomed' : '')
                 }
                 onMouseEnter={() => emitHover({ kind: 'node', ...n, ops })}
                 onMouseLeave={() => emitHover(null)}
-                onClick={() => ops && onSelectHub?.(ops)}
+                onClick={(evt) => {
+                  evt.stopPropagation()
+                  handleNodeClick(n, ops)
+                }}
               >
                 <circle r={radius} />
               </g>
@@ -288,8 +406,8 @@ export default function FlowMap({ geojson, nodes, edges, onHover, onEvent, hubOp
       </div>
 
       <div className="flow-map__hint">
-        <Zones className="icon" /> Click a division to zoom in — click again (or "Full map") to zoom out. Hover any
-        division or hub for details.
+        <Zones className="icon" /> Click a division to zoom in, then click a hub to drill into that zone and see its
+        seller, customer, and package flow. Use the breadcrumb to zoom back out.
       </div>
     </div>
   )

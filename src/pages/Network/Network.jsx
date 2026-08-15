@@ -7,7 +7,7 @@ import '../shared.css'
 import './Network.css'
 
 export default function Network() {
-  const { data, geojson, hubOps, loading } = useOps()
+  const { data, geojson, hubOps, zoneStats, loading } = useOps()
   const [hoverInfo, setHoverInfo] = useState(null)
 
   const zoneCoverage = useMemo(() => {
@@ -41,7 +41,7 @@ export default function Network() {
       </div>
 
       <div className="network__map-panel">
-        <FlowMap geojson={geojson} nodes={data.nodes} edges={data.edges} onHover={setHoverInfo} hubOps={hubOps} />
+        <FlowMap geojson={geojson} nodes={data.nodes} edges={data.edges} onHover={setHoverInfo} hubOps={hubOps} zoneStats={zoneStats} />
         {hoverInfo?.kind === 'node' && (
           <div className="network__tooltip">
             <strong>{hoverInfo.label}</strong>

@@ -701,3 +701,20 @@ export function generateCustomerProfiles(shipments) {
   }
   return rows.sort((a, b) => b.deliveryHistory - a.deliveryHistory)
 }
+
+// ---------- per-hub zone stats (sellers/customers/packages, for the map drill-down) ----------
+export function generateZoneStats(hubOps, shipments) {
+  const byHub = new Map(hubOps.map((h) => [h.hub, { sellers: new Set(), customers: new Set(), packages: 0 }]))
+  for (const s of shipments) {
+    const zone = byHub.get(s.hub)
+    if (!zone) continue
+    zone.sellers.add(s.seller)
+    zone.customers.add(`${s.customer}|${s.customerCity}`)
+    zone.packages += 1
+  }
+  const out = {}
+  for (const [hub, zone] of byHub) {
+    out[hub] = { sellerCount: zone.sellers.size, customerCount: zone.customers.size, packageCount: zone.packages }
+  }
+  return out
+}

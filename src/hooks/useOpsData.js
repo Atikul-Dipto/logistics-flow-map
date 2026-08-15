@@ -16,6 +16,7 @@ import {
   generateLinehaulTrips,
   generateVehicles,
   generateCustomerProfiles,
+  generateZoneStats,
 } from '../data/generate'
 
 // Real aggregates (ops_data.json) + the client-side generators layered
@@ -50,6 +51,7 @@ export function useOpsData() {
   const linehaulTrips = useMemo(() => (opsData && hubOps.length ? generateLinehaulTrips(hubOps, opsData) : []), [opsData, hubOps])
   const vehicles = useMemo(() => (hubOps.length ? generateVehicles(hubOps) : []), [hubOps])
   const customerProfiles = useMemo(() => generateCustomerProfiles(mockShipments), [mockShipments])
+  const zoneStats = useMemo(() => (hubOps.length ? generateZoneStats(hubOps, mockShipments) : {}), [hubOps, mockShipments])
 
   return {
     opsData,
@@ -69,6 +71,7 @@ export function useOpsData() {
     linehaulTrips,
     vehicles,
     customerProfiles,
+    zoneStats,
     opsLoading: !opsData,
   }
 }
